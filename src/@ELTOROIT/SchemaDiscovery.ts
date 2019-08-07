@@ -209,43 +209,68 @@ export class SchemaDiscovery {
 			this.orgManager.coreMD.setValues(sObj);
 		} else {
 			const localRejects: string[] = [];
-
+            let rejectionMessage = "";
+            let allRejectionMessages = "";
 			// Can't be
 			if (sObj.customSetting) {
-				localRejects.push("Can't be Custom setting");
+                rejectionMessage = "Can't be Custom setting";
+                allRejectionMessages += ", " + rejectionMessage;
+                localRejects.push(rejectionMessage);
 			}
 			if (sObj.deprecatedAndHidden) {
-				localRejects.push("Can't be Deprecated and hidden");
+                rejectionMessage = "Can't be Deprecated and hidden";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
 			}
 
 			// Must be
 			if (!sObj.createable) {
-				localRejects.push("Must be createable");
+                rejectionMessage = "Must be createable";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
 			}
 			if (!sObj.deletable) {
-				localRejects.push("Must be deletable");
+                rejectionMessage = "Must be deletable";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
 			}
 			if (!sObj.queryable) {
-				localRejects.push("Must be queryable");
-			}
+                rejectionMessage = "Must be queryable";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
+            }
+            /*
+            This condition is not needed
 			if (!sObj.replicateable) {
 				localRejects.push("Must be replicateable");
-			}
+			}*/
 			if (!sObj.retrieveable) {
-				localRejects.push("Must be retrieveable");
-			}
+                rejectionMessage = "Must be retrieveable";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
+            }
+            /*
+            This condition is not needed
 			if (!sObj.searchable) {
 				localRejects.push("Must be searchable");
-			}
+            }
 			if (!sObj.undeletable) {
 				localRejects.push("Must be undeletable");
-			}
+            }
+            */
 			if (!sObj.updateable) {
-				localRejects.push("Must be updateable");
+                rejectionMessage = "Must be updateable";
+                allRejectionMessages += ", " + rejectionMessage;
+				localRejects.push(rejectionMessage);
 			}
 			if (!this.orgManager.settings.getRequestedSObjectNames(false).includes(sObj.name)) {
-				localRejects.push("Was Not requested");
-			}
+                rejectionMessage = "Was Not requested";
+                localRejects.push(rejectionMessage);
+			} else{
+                if(allRejectionMessages){
+                    Util.writeLog("Object " + sObj.name + " was discarded because: " + allRejectionMessages, LogLevel.TRACE); 
+                }
+            }
 
 			if ((this.overrideIncludeSobject(sObj)) || (localRejects.length === 0)) {
 				this.privSObjects.set(sObj.name, {
@@ -267,25 +292,31 @@ export class SchemaDiscovery {
 	}
 
 	private addField(sObj: ISchemaData, sObjName, field): void {
-		const localRejects: string[] = [];
+        const localRejects: string[] = [];
+        let rejectionMessage = "";
 
 		// Can't be
 		if (field.autoNumber) {
-			localRejects.push("Can't be autoNumber");
+            rejectionMessage = "Can't be autoNumber";
+			localRejects.push(rejectionMessage);
 		}
 		if (field.calculated) {
-			localRejects.push("Can't be calculated");
+            rejectionMessage = "Can't be calculated";
+			localRejects.push(rejectionMessage);
 		}
 		if (field.deprecatedAndHidden) {
-			localRejects.push("Can't be deprecatedAndHidden");
+            rejectionMessage = "Can't be deprecatedAndHidden";
+			localRejects.push(rejectionMessage);
 		}
 		if (this.orgManager.settings.getSObjectData(sObjName).ignoreFields.includes(field.name)) {
-			localRejects.push("User asked for this field to be excluded");
+            rejectionMessage = "User asked for this field to be excluded";
+			localRejects.push(rejectionMessage);
 		}
 
 		// Must be
 		if (!field.createable) {
-			localRejects.push("Must be createable");
+            rejectionMessage = "Must be createable";
+			localRejects.push(rejectionMessage);
 		}
 		// if (!field.updateable)
 		// 	localRejects.push('Not updateable')
@@ -296,16 +327,18 @@ export class SchemaDiscovery {
 				if ((this.privSObjects.has(field.referenceTo[0])) || (this.orgManager.coreMD.isMD(field.referenceTo[0]))) {
 					// Include it...
 				} else {
-					localRejects.push("Parent sObject [" + field.referenceTo[0] + "] is not processed");
+                    rejectionMessage = "Parent sObject [" + field.referenceTo[0] + "] is not processed";
+					localRejects.push(rejectionMessage);
 				}
 				if (sObjName === field.referenceTo[0]) {
-					localRejects.push("Current version does not allow recursive parenting");
+                    rejectionMessage = "Current version does not allow recursive parenting";
+					localRejects.push(rejectionMessage);
 				}
 			} else {
 				let msg: string = "Reference, but it points to 0 or more than 1 sObject: | ";
 				field.referenceTo.forEach((element) => {
 					msg += element + " | ";
-				});
+                });
 				localRejects.push(msg);
 			}
 		}
@@ -324,19 +357,23 @@ export class SchemaDiscovery {
 	}
 
 	private addChild(sObj: ISchemaData, sObjName, child): void {
-		const localRejects: string[] = [];
+        const localRejects: string[] = [];
+        let rejectionMessage = "";
 
 		// Can't be
 		if (child.deprecatedAndHidden) {
-			localRejects.push("Can't be deprecatedAndHidden");
+            rejectionMessage = "Can't be deprecatedAndHidden";
+			localRejects.push(rejectionMessage);
 		}
 		if (sObjName === child.childSObject) {
-			localRejects.push("Current version does not allow recursive parenting");
+            rejectionMessage = "Current version does not allow recursive parenting";
+			localRejects.push(rejectionMessage);
 		}
 
 		// Must be
 		if (!this.privSObjects.has(child.childSObject)) {
-			localRejects.push("Child sObject [" + child.childSObject + "] is not processed");
+            rejectionMessage = "Child sObject [" + child.childSObject + "] is not processed";
+			localRejects.push(rejectionMessage);
 		}
 
 		if ((this.overrideIncludeChild(child.childSObject)) || (localRejects.length === 0)) {
